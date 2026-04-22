@@ -3,7 +3,7 @@
   "name": "Sayfa HTML Kaydedici",
   "version": "1.0.0",
   "description": "Aktif sekmedeki sayfanin tam HTML kaynagini tek tikla dosya olarak indirir.",
-  "permissions": ["activeTab", "scripting", "downloads"],
+  "permissions": ["activeTab", "scripting"],
   "background": {
     "service_worker": "background.js"
   },

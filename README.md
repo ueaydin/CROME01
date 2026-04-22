@@ -34,5 +34,12 @@ README.md
 ## Izinler
 
 - `activeTab` — tiklama anindaki aktif sekmeye erisim
-- `scripting` — aktif sekmeye HTML'i okuyan kucuk fonksiyonu enjekte etmek icin
-- `downloads` — dosyayi diske yazmak icin
+- `scripting` — aktif sekmeye HTML'i alip indirme baglantisi olusturan fonksiyonu enjekte etmek icin
+
+## Sorun Giderme
+
+Eklenti ikonunda **ERR** rozeti goruyorsan:
+
+1. Bulundugun sayfa `http://`, `https://` veya `file://` olmali. `chrome://`, `edge://`, Chrome Web Store ve benzeri dahili sayfalarda eklenti calismaz.
+2. `chrome://extensions` -> bu eklenti -> **Hizmetli Calisani'ni incele** (service worker -> "Inspect") baglantisini ac. Acilan DevTools konsolunda gercek hata mesaji gorunur.
+3. Sayfa icerik guvenlik politikasi (CSP) veya tarayici ayari download'lari engelliyorsa indirme basarisiz olabilir; ayni sayfayi farkli bir siteyle test et.

@@ -50,57 +50,57 @@ async function flashBadge(tabId, text, color) {
   }
 }
 
-chrome.action.onClicked.addListener(async (tab) => {
-  if (!tab || !tab.id || !canInject(tab.url)) {
-    await flashBadge(tab && tab.id, "ERR", "#c0392b");
-    return;
-  }
-
-  let html;
+// Runs inside the page. Blob URL + <a download> works reliably in the page
+// context and sidesteps MV3 service-worker blob-URL download limitations.
+function savePageAsHtml(filename) {
   try {
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => document.documentElement.outerHTML,
-    });
-    html = results && results[0] && results[0].result;
-  } catch {
-    await flashBadge(tab.id, "ERR", "#c0392b");
-    return;
+    const html = document.documentElement.outerHTML;
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => {
+      try { URL.revokeObjectURL(url); } catch { /* noop */ }
+    }, 60000);
+    return { ok: true, bytes: html.length };
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e) };
   }
+}
 
-  if (typeof html !== "string" || html.length === 0) {
-    await flashBadge(tab.id, "ERR", "#c0392b");
+chrome.action.onClicked.addListener(async (tab) => {
+  const tabId = tab && tab.id;
+
+  if (!tabId || !canInject(tab.url)) {
+    console.warn("Cannot inject on URL:", tab && tab.url);
+    await flashBadge(tabId, "ERR", "#c0392b");
     return;
   }
 
   const filename =
     sanitize(hostnameOf(tab.url)) + "_" + timestamp() + ".html";
 
-  let url;
   try {
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    url = URL.createObjectURL(blob);
-  } catch {
-    await flashBadge(tab.id, "ERR", "#c0392b");
-    return;
-  }
-
-  try {
-    await chrome.downloads.download({
-      url,
-      filename,
-      saveAs: false,
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: savePageAsHtml,
+      args: [filename],
     });
-    await flashBadge(tab.id, "OK", "#27ae60");
-  } catch {
-    await flashBadge(tab.id, "ERR", "#c0392b");
-  } finally {
-    setTimeout(() => {
-      try {
-        URL.revokeObjectURL(url);
-      } catch {
-        /* noop */
-      }
-    }, 60000);
+    const r = results && results[0] && results[0].result;
+    if (r && r.ok) {
+      await flashBadge(tabId, "OK", "#27ae60");
+    } else {
+      console.error("HTML save failed in page:", r && r.error);
+      await flashBadge(tabId, "ERR", "#c0392b");
+    }
+  } catch (e) {
+    console.error("executeScript failed:", e);
+    await flashBadge(tabId, "ERR", "#c0392b");
   }
 });
